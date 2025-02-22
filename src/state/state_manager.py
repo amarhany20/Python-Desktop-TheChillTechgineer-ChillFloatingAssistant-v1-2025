@@ -1,0 +1,1 @@
+# Manages global app state
