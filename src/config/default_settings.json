@@ -1,1 +1,15 @@
-{}
+{
+  "theme": "dark-1",
+  "selected_icon": "main_icon_1",
+  "menu_size": "medium",
+  "tray_icon_visibility": true,
+  "shortcuts": {
+    "open_menu": "Ctrl+Shift+M",
+    "take_screenshot": "Ctrl+Alt+S"
+  },
+  "language": "en-US",
+  "auto_start": false,
+  "last_position": { "x": 200, "y": 200 },
+  "enabled_tools": ["quick_notes", "clipboard_manager"],
+  "last_icon_size": 64
+}

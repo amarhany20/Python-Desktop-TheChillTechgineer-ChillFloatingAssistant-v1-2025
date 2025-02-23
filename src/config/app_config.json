@@ -1,1 +1,29 @@
-{}
+{
+  "app_name": "Chill Floating Assistant",
+  "version": "00.00.01",
+  "developer": "Chill Techgineer",
+  "update_url": "https://example.com/update",
+  "menu_grid": { "rows": 3, "columns": 3 },
+  "menu_size_options": {
+    "small": [250, 350],
+    "medium": [300, 400],
+    "large": [350, 450]
+  },
+  "menu_toggle_speed": "100ms",
+  "themes": ["dark-1"],
+  "languages": ["en-US"],
+  "available_tools": ["quick_notes", "clipboard_manager", "screenshot_tool", "pomodoro_timer"],
+  "min_widget_size": 32,
+  "max_widget_size": 200,
+  "config_paths": {
+    "app_config": "src/config/app_config.json",
+    "user_settings": "src/config/user_settings.json",
+    "default_settings": "src/config/default_settings.json",
+    "assets_config": "src/config/assets_config.json",
+    "theme_colors": "src/config/theme_colors.json"
+  },
+  "resize_handle_size": 20,
+  "debug": false,
+  "show_debug_borders": true,
+  "widget_hover_opacity": 0.5
+}
