@@ -11,14 +11,8 @@ from src.state.state_manager import StateManager
 
 class FloatingWidget(QWidget):
     def __init__(self, state_manager: StateManager, parent: Optional[QWidget] = None) -> None:
-        """
-        A floating widget with:
-          - A main icon (draggable for moving)
-          - An optional custom resize-handle icon at bottom-right for resizing
-        """
         super().__init__(parent)
         self.state_manager: StateManager = state_manager
-
         # Read config from app_config
         app_config = self.state_manager.settings_manager.app_config
         self.min_size: int = app_config.get("min_widget_size", 32)
@@ -28,13 +22,13 @@ class FloatingWidget(QWidget):
         self.show_debug_borders: bool = app_config.get("show_debug_borders", False)
 
         # From user settings: whether to show the resize icon
-        self.show_resize_icon: bool = self.state_manager.settings_manager.get_setting(
-            "show_widget_resize_icon", True
-        )
+        self.show_resize_icon: bool = self.state_manager.settings_manager.get_setting("show_widget_resize_icon", True)
 
         # Set window flags and transparency
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        # Enable mouse tracking so we can detect hover without pressing any buttons
+        self.setMouseTracking(True)
 
         # Drag/Resize states
         self.dragging: bool = False
@@ -43,8 +37,9 @@ class FloatingWidget(QWidget):
         self.resize_origin: QPoint = QPoint(0, 0)
         self.original_size: QRect = QRect()
 
-        # Placeholder for original high-quality image
+        # Placeholders for original images
         self.original_image: Optional[QImage] = None
+        self.original_handle_icon: Optional[QPixmap] = None
 
         # Load main icon
         self.selected_icon: Optional[QPixmap] = self.load_main_icon()
@@ -57,7 +52,7 @@ class FloatingWidget(QWidget):
         else:
             self.setFixedSize(widget_size, widget_size)
 
-        # Load custom resize handle icon
+        # Load custom resize handle icon (this will be updated in _scale_main_icon)
         self.handle_pixmap: Optional[QPixmap] = self.load_resize_icon()
 
         # Set initial position
@@ -109,8 +104,8 @@ class FloatingWidget(QWidget):
 
     def load_resize_icon(self) -> Optional[QPixmap]:
         """
-        Loads the custom resize icon from assets_config.json.
-        Assumes 'resize_icon_1' is defined if enabled.
+        Loads the custom resize icon from assets_config.json and stores its original pixmap.
+        It will be scaled later based on the widget size and a scale factor.
         """
         if not self.show_resize_icon:
             return None
@@ -123,29 +118,42 @@ class FloatingWidget(QWidget):
             asset_config = json.load(f)
         resize_icon_path = asset_config.get("resize_icon_1")
         if resize_icon_path and os.path.exists(resize_icon_path):
-            pixmap = QPixmap(resize_icon_path)
-            return pixmap.scaled(
-                self.handle_size, self.handle_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
+            original_handle_icon = QPixmap(resize_icon_path)
+            self.original_handle_icon = original_handle_icon  # Save for dynamic rescaling
+            # Initially scale based on the current widget width:
+            resize_icon_scale_factor = self.state_manager.settings_manager.app_config.get("resize_icon_scale_factor", 0.2)
+            final_handle_icon_size = max(10, int(self.width() * resize_icon_scale_factor))
+            return original_handle_icon.scaled(final_handle_icon_size, final_handle_icon_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return None
 
-    def _scale_main_icon(self, icon_size: int) -> None:
+    def _scale_main_icon(self, widget_size: int) -> None:
         """
-        Scales the original image to the target logical icon size and updates the widget.
+        Scales the main icon based on the widget size and updates the widget.
+        Also dynamically rescales the custom resize handle icon using the configured scale factor.
         """
         if not self.original_image:
             return
+
         dpr: float = self.devicePixelRatioF()
-        target_size: int = int(icon_size * dpr)
+        target_size: int = int(widget_size * dpr)
         scaled_image: QImage = self.original_image.scaled(
             target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
         pixmap: QPixmap = QPixmap.fromImage(scaled_image)
         pixmap.setDevicePixelRatio(dpr)
         self.selected_icon = pixmap
-        # Set widget size to the pixmap's logical size:
+
+        # Set widget size to the main icon's logical size:
         logical_size = pixmap.size() / pixmap.devicePixelRatio()
         self.setFixedSize(logical_size)
+
+        # Now update the resize handle icon based on the new widget size:
+        if self.show_resize_icon and self.original_handle_icon:
+            resize_icon_scale_factor = self.state_manager.settings_manager.app_config.get("resize_icon_scale_factor", 0.2)
+            # Compute the new handle size relative to the widget's width:
+            final_handle_icon_size = max(10, int(self.width() * resize_icon_scale_factor))
+            self.handle_pixmap = self.original_handle_icon.scaled(final_handle_icon_size, final_handle_icon_size,
+                                                                   Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
     def _get_handle_rect(self) -> QRect:
         """
@@ -153,7 +161,6 @@ class FloatingWidget(QWidget):
         """
         if not self.show_resize_icon or not self.handle_pixmap:
             return QRect()
-
         w = min(self.handle_pixmap.width(), self.width())
         h = min(self.handle_pixmap.height(), self.height())
         x = self.width() - w
@@ -219,16 +226,13 @@ class FloatingWidget(QWidget):
                 screen = self.screen()
             screen_geom = screen.availableGeometry()
             margin = 50
-            new_x = max(
-                screen_geom.left() + margin,
-                min(new_pos.x(), screen_geom.right() - self.width() - margin),
-            )
-            new_y = max(
-                screen_geom.top() + margin,
-                min(new_pos.y(), screen_geom.bottom() - self.height() - margin),
-            )
+            new_x = max(screen_geom.left() + margin,
+                        min(new_pos.x(), screen_geom.right() - self.width() - margin))
+            new_y = max(screen_geom.top() + margin,
+                        min(new_pos.y(), screen_geom.bottom() - self.height() - margin))
             self.move(new_x, new_y)
         else:
+            # Change the cursor when hovering over the resize handle
             local_pos = event.position().toPoint()
             if self._in_resize_handle(local_pos):
                 self.setCursor(Qt.SizeFDiagCursor)
@@ -255,7 +259,6 @@ class FloatingWidget(QWidget):
         """
         Decrease the widget's opacity on mouse hover.
         """
-        # Get the hover opacity from app_config, defaulting to 0.7 if not set.
         hover_opacity = self.state_manager.settings_manager.app_config.get("widget_hover_opacity", 0.5)
         self.setWindowOpacity(hover_opacity)
         super().enterEvent(event)

@@ -1,6 +1,6 @@
 {
   "app_name": "Chill Floating Assistant",
-  "version": "00.00.01",
+  "version": "00.00.10",
   "developer": "Chill Techgineer",
   "update_url": "https://example.com/update",
   "menu_grid": { "rows": 3, "columns": 3 },
@@ -25,5 +25,11 @@
   "resize_handle_size": 20,
   "debug": false,
   "show_debug_borders": true,
-  "widget_hover_opacity": 0.5
+  "widget_hover_opacity": 0.5,
+  "widget_hover_scale": 1.05,
+  "widget_hover_animation_speed": "200ms",
+  "widget_hover_animation": true,
+  "resize_icon_scale_factor": 0.2
+
+
 }
