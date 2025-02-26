@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QPoint, QRect, Qt, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QGuiApplication, QImage, QImageReader, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QWidget
 
@@ -63,6 +63,23 @@ class FloatingWidget(QWidget):
 
         # Flag for menu toggling
         self.menu_toggled: bool = False
+        
+        # Set up opacity animation
+        self._opacity = 1.0
+        self.opacity_animation = QPropertyAnimation(self, b"opacity")
+        self.opacity_animation.setEasingCurve(QEasingCurve.InOutCubic)
+        self.opacity_transition_duration = app_config.get("widget_opacity_transition_duration", 100)
+        self.hover_opacity = app_config.get("widget_hover_opacity", 0.5)
+
+    # Define property for opacity animation
+    def get_opacity(self) -> float:
+        return self._opacity
+        
+    def set_opacity(self, opacity: float) -> None:
+        self._opacity = opacity
+        self.setWindowOpacity(opacity)
+        
+    opacity = Property(float, get_opacity, set_opacity)
 
     def load_main_icon(self) -> Optional[QPixmap]:
         """
@@ -104,7 +121,7 @@ class FloatingWidget(QWidget):
 
     def load_resize_icon(self) -> Optional[QPixmap]:
         """
-        Loads the custom resize icon from assets_config.json and stores its original pixmap.
+        Loads the custom resize icon from assets_config.json and stores its original pixmap.)
         It will be scaled later based on the widget size and a scale factor.
         """
         if not self.show_resize_icon:
@@ -257,15 +274,28 @@ class FloatingWidget(QWidget):
 
     def enterEvent(self, event: QMouseEvent) -> None:
         """
-        Decrease the widget's opacity on mouse hover.
+        Decrease the widget's opacity on mouse hover with smooth transition.
         """
-        hover_opacity = self.state_manager.settings_manager.app_config.get("widget_hover_opacity", 0.5)
-        self.setWindowOpacity(hover_opacity)
+        if self.opacity_animation.state() == QPropertyAnimation.Running:
+            self.opacity_animation.stop()
+        
+        self.opacity_animation.setDuration(self.opacity_transition_duration)
+        self.opacity_animation.setStartValue(self.windowOpacity())
+        self.opacity_animation.setEndValue(self.hover_opacity)
+        self.opacity_animation.start()
+        
         super().enterEvent(event)
 
     def leaveEvent(self, event: QMouseEvent) -> None:
         """
-        Restore the widget's opacity when the mouse is no longer hovering.
+        Restore the widget's opacity when the mouse is no longer hovering with smooth transition.
         """
-        self.setWindowOpacity(1.0)
+        if self.opacity_animation.state() == QPropertyAnimation.Running:
+            self.opacity_animation.stop()
+            
+        self.opacity_animation.setDuration(self.opacity_transition_duration)
+        self.opacity_animation.setStartValue(self.windowOpacity())
+        self.opacity_animation.setEndValue(1.0)
+        self.opacity_animation.start()
+        
         super().leaveEvent(event)

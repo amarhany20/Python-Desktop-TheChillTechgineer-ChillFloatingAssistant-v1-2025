@@ -25,11 +25,6 @@
   "resize_handle_size": 20,
   "debug": false,
   "show_debug_borders": true,
-  "widget_hover_opacity": 0.5,
-  "widget_hover_scale": 1.05,
-  "widget_hover_animation_speed": "200ms",
-  "widget_hover_animation": true,
-  "resize_icon_scale_factor": 0.2
-
-
+  "resize_icon_scale_factor": 0.2,
+  "widget_opacity_transition_duration": 250
 }
