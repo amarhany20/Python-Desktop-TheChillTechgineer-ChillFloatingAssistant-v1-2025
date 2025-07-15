@@ -2,8 +2,17 @@
   "main_icon_1": "assets/icons/widget/app_icon_2_trn.png",
   "main_icon_2": "assets/icons/widget/Original App Icon Transparent.png",
   "main_icon_3": "assets/icons/widget/snow_flake_icon.png",
+
   "resize_icon_1": "assets/icons/widget/resize/resize_icon_1.png",
-  "settings_icon": "assets/icons/settings/settings_icon.png",
+
+  "settings_icon_dark": "assets/icons/settings/settings_icon_1_dark.png",
+  "quick_notes_icon_dark": "assets/icons/quick_notes/quick_notes_icon_1.png",
+  "clipboard_manager_icon_dark": "assets/icons/clipboard_manager/clipboard_manager_icon_1.png",
+  "screenshot_tool_icon_dark": "assets/icons/screenshot_tool/screenshot_tool_icon_1.png",
   "tray_icon": "assets/icons/widget/app_icon_2_trn.png",
-  "quick_notes_icon": "assets/icons/tools/quick_notes.png"
+
+  "quick_notes_icon": "assets/icons/widget/quick_notes_icon.png",
+  "clipboard_manager_icon": "assets/icons/widget/clipboard_manager_icon.png",
+  "screenshot_tool_icon": "assets/icons/widget/screenshot_tool_icon.png",
+  "pomodoro_timer_icon": "assets/icons/widget/pomodoro_timer_icon.png"
 }

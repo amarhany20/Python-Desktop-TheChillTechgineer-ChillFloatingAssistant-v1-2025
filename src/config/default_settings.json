@@ -9,7 +9,12 @@
   },
   "language": "en-US",
   "auto_start": false,
-  "last_position": { "x": 200, "y": 200 },
+  "last_position": {
+    "x": 1501,
+    "y": 352
+  },
   "enabled_tools": ["quick_notes", "clipboard_manager"],
-  "last_icon_size": 64
+  "last_widget_size": 74,
+  "show_widget_resize_icon": true,
+  "open_menu_trigger": "double_click"
 }

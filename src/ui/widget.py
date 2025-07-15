@@ -3,10 +3,11 @@ import os
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QPoint, QRect, Qt, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QGuiApplication, QImage, QImageReader, QMouseEvent, QPainter, QPen, QPixmap
+from PySide6.QtGui import QGuiApplication, QImage, QImageReader, QMouseEvent, QPainter, QPen, QPixmap, QIcon
 from PySide6.QtWidgets import QWidget
 
 from src.state.state_manager import StateManager
+from src.ui.main_menu import MainMenu
 
 
 class FloatingWidget(QWidget):
@@ -27,7 +28,6 @@ class FloatingWidget(QWidget):
         # Set window flags and transparency
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        # Enable mouse tracking so we can detect hover without pressing any buttons
         self.setMouseTracking(True)
 
         # Drag/Resize states
@@ -52,7 +52,7 @@ class FloatingWidget(QWidget):
         else:
             self.setFixedSize(widget_size, widget_size)
 
-        # Load custom resize handle icon (this will be updated in _scale_main_icon)
+        # Load custom resize handle icon (will be updated in _scale_main_icon)
         self.handle_pixmap: Optional[QPixmap] = self.load_resize_icon()
 
         # Set initial position
@@ -61,31 +61,27 @@ class FloatingWidget(QWidget):
         )
         self.move(last_pos.get("x", 100), last_pos.get("y", 100))
 
-        # Flag for menu toggling
-        self.menu_toggled: bool = False
-        
+        # Reference to the MainMenu (if open)
+        self.main_menu: Optional[MainMenu] = None
+
         # Set up opacity animation
         self._opacity = 1.0
         self.opacity_animation = QPropertyAnimation(self, b"opacity")
         self.opacity_animation.setEasingCurve(QEasingCurve.InOutCubic)
-        self.opacity_transition_duration = app_config.get("widget_opacity_transition_duration", 100)
+        self.opacity_transition_duration = app_config.get("widget_opacity_transition_duration", 250)
         self.hover_opacity = app_config.get("widget_hover_opacity", 0.5)
 
-    # Define property for opacity animation
+    # Property for opacity animation
     def get_opacity(self) -> float:
         return self._opacity
-        
+
     def set_opacity(self, opacity: float) -> None:
         self._opacity = opacity
         self.setWindowOpacity(opacity)
-        
+
     opacity = Property(float, get_opacity, set_opacity)
 
     def load_main_icon(self) -> Optional[QPixmap]:
-        """
-        Loads the main icon from assets_config.json without pre-scaling,
-        so that the original high-resolution image is preserved.
-        """
         assets_path = self.state_manager.settings_manager.assets_config_file
         if not os.path.exists(assets_path):
             if self.debug:
@@ -102,7 +98,6 @@ class FloatingWidget(QWidget):
                 print("Icon path not found:", icon_path)
             return None
 
-        # Read the image using QImageReader without scaling it first.
         reader = QImageReader(icon_path)
         reader.setAutoTransform(True)
         image = reader.read()
@@ -111,19 +106,12 @@ class FloatingWidget(QWidget):
                 print("Failed to load image from:", icon_path)
             return None
 
-        # Save the original high-resolution image for later rescaling.
         self.original_image = image
-
-        # Create a pixmap from the full resolution image.
         pixmap = QPixmap.fromImage(image)
         pixmap.setDevicePixelRatio(self.devicePixelRatioF())
         return pixmap
 
     def load_resize_icon(self) -> Optional[QPixmap]:
-        """
-        Loads the custom resize icon from assets_config.json and stores its original pixmap.)
-        It will be scaled later based on the widget size and a scale factor.
-        """
         if not self.show_resize_icon:
             return None
 
@@ -136,46 +124,33 @@ class FloatingWidget(QWidget):
         resize_icon_path = asset_config.get("resize_icon_1")
         if resize_icon_path and os.path.exists(resize_icon_path):
             original_handle_icon = QPixmap(resize_icon_path)
-            self.original_handle_icon = original_handle_icon  # Save for dynamic rescaling
-            # Initially scale based on the current widget width:
-            resize_icon_scale_factor = self.state_manager.settings_manager.app_config.get("resize_icon_scale_factor", 0.2)
+            self.original_handle_icon = original_handle_icon
+            resize_icon_scale_factor = self.state_manager.app_config.get("resize_icon_scale_factor", 0.2)
             final_handle_icon_size = max(10, int(self.width() * resize_icon_scale_factor))
-            return original_handle_icon.scaled(final_handle_icon_size, final_handle_icon_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            return original_handle_icon.scaled(final_handle_icon_size, final_handle_icon_size,
+                                               Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return None
 
     def _scale_main_icon(self, widget_size: int) -> None:
-        """
-        Scales the main icon based on the widget size and updates the widget.
-        Also dynamically rescales the custom resize handle icon using the configured scale factor.
-        """
         if not self.original_image:
             return
-
         dpr: float = self.devicePixelRatioF()
         target_size: int = int(widget_size * dpr)
-        scaled_image: QImage = self.original_image.scaled(
-            target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
-        )
-        pixmap: QPixmap = QPixmap.fromImage(scaled_image)
+        scaled_image = self.original_image.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = QPixmap.fromImage(scaled_image)
         pixmap.setDevicePixelRatio(dpr)
         self.selected_icon = pixmap
 
-        # Set widget size to the main icon's logical size:
         logical_size = pixmap.size() / pixmap.devicePixelRatio()
         self.setFixedSize(logical_size)
 
-        # Now update the resize handle icon based on the new widget size:
         if self.show_resize_icon and self.original_handle_icon:
-            resize_icon_scale_factor = self.state_manager.settings_manager.app_config.get("resize_icon_scale_factor", 0.2)
-            # Compute the new handle size relative to the widget's width:
+            resize_icon_scale_factor = self.state_manager.app_config.get("resize_icon_scale_factor", 0.2)
             final_handle_icon_size = max(10, int(self.width() * resize_icon_scale_factor))
             self.handle_pixmap = self.original_handle_icon.scaled(final_handle_icon_size, final_handle_icon_size,
                                                                    Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
     def _get_handle_rect(self) -> QRect:
-        """
-        Returns the rectangle for the resize handle drawn in the bottom-right corner.
-        """
         if not self.show_resize_icon or not self.handle_pixmap:
             return QRect()
         w = min(self.handle_pixmap.width(), self.width())
@@ -185,17 +160,11 @@ class FloatingWidget(QWidget):
         return QRect(x, y, w, h)
 
     def _in_resize_handle(self, pos: QPoint) -> bool:
-        """
-        Checks if the given local position is within the resize handle area.
-        """
         if not self.show_resize_icon or not self.handle_pixmap:
             return False
         return self._get_handle_rect().contains(pos)
 
     def paintEvent(self, event) -> None:
-        """
-        Paints the main icon and, if enabled, the custom resize handle.
-        """
         painter = QPainter(self)
         if self.selected_icon:
             painter.drawPixmap(0, 0, self.selected_icon)
@@ -219,11 +188,13 @@ class FloatingWidget(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             local_pos = event.position().toPoint()
+            # If we're in the resize handle, start resizing
             if self._in_resize_handle(local_pos):
                 self.resizing = True
                 self.resize_origin = event.globalPosition().toPoint()
                 self.original_size = self.geometry()
-            elif not self.menu_toggled:
+            # Otherwise, if the menu isn't open, start dragging
+            elif not self.state_manager.menu_open:
                 self.dragging = True
                 self.drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
         super().mousePressEvent(event)
@@ -236,7 +207,7 @@ class FloatingWidget(QWidget):
             self.setFixedSize(new_size, new_size)
             if self.original_image:
                 self._scale_main_icon(new_size)
-        elif self.dragging and not self.menu_toggled:
+        elif self.dragging and not self.state_manager.menu_open:
             new_pos = event.globalPosition().toPoint() - self.drag_offset
             screen = QGuiApplication.screenAt(new_pos)
             if screen is None:
@@ -249,7 +220,7 @@ class FloatingWidget(QWidget):
                         min(new_pos.y(), screen_geom.bottom() - self.height() - margin))
             self.move(new_x, new_y)
         else:
-            # Change the cursor when hovering over the resize handle
+            # Update cursor if hovering over the handle
             local_pos = event.position().toPoint()
             if self._in_resize_handle(local_pos):
                 self.setCursor(Qt.SizeFDiagCursor)
@@ -269,33 +240,44 @@ class FloatingWidget(QWidget):
                 self.state_manager.settings_manager.update_setting("last_position", {"x": pos.x(), "y": pos.y()})
         super().mouseReleaseEvent(event)
 
-    def set_menu_toggled(self, toggled: bool) -> None:
-        self.menu_toggled = toggled
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        """
+        Toggle the main menu when the widget is double-clicked (if not clicking the resize handle).
+        """
+        if event.button() == Qt.LeftButton and not self._in_resize_handle(event.position().toPoint()):
+            self.toggle_menu()
+        super().mouseDoubleClickEvent(event)
+
+    def toggle_menu(self) -> None:
+        """
+        If the menu is closed, create and show it below the widget.
+        Otherwise, hide the menu and restore the widget position.
+        """
+        if self.state_manager.menu_open:
+            # Hide the menu
+            if self.main_menu:
+                self.main_menu.hide_menu(self)
+            self.state_manager.menu_open = False
+        else:
+            # Show the menu
+            self.main_menu = MainMenu(self.state_manager)
+            self.main_menu.show_below_widget(self)
+            self.state_manager.menu_open = True
 
     def enterEvent(self, event: QMouseEvent) -> None:
-        """
-        Decrease the widget's opacity on mouse hover with smooth transition.
-        """
         if self.opacity_animation.state() == QPropertyAnimation.Running:
             self.opacity_animation.stop()
-        
         self.opacity_animation.setDuration(self.opacity_transition_duration)
         self.opacity_animation.setStartValue(self.windowOpacity())
         self.opacity_animation.setEndValue(self.hover_opacity)
         self.opacity_animation.start()
-        
         super().enterEvent(event)
 
     def leaveEvent(self, event: QMouseEvent) -> None:
-        """
-        Restore the widget's opacity when the mouse is no longer hovering with smooth transition.
-        """
         if self.opacity_animation.state() == QPropertyAnimation.Running:
             self.opacity_animation.stop()
-            
         self.opacity_animation.setDuration(self.opacity_transition_duration)
         self.opacity_animation.setStartValue(self.windowOpacity())
         self.opacity_animation.setEndValue(1.0)
         self.opacity_animation.start()
-        
         super().leaveEvent(event)

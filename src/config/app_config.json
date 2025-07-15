@@ -12,7 +12,11 @@
   "menu_toggle_speed": "100ms",
   "themes": ["dark-1"],
   "languages": ["en-US"],
-  "available_tools": ["quick_notes", "clipboard_manager", "screenshot_tool", "pomodoro_timer"],
+  "available_tools": ["quick_notes", "clipboard_manager", "screenshot_tool",
+    "quick_timer", "pomodoro_timer", "stopwatch",
+    "calculator", "weather", "calendar",
+    "app_shortcuts", "file_shortcuts", "folder_shortcuts",
+    "system_monitor", "counter", "currency_converter_planned", "unit_converter_planned"],
   "min_widget_size": 32,
   "max_widget_size": 200,
   "config_paths": {

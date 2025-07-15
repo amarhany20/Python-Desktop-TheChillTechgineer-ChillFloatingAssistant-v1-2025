@@ -10,13 +10,13 @@
     "language": "en-US",
     "auto_start": false,
     "last_position": {
-        "x": 1399,
-        "y": 432
+        "x": 1270,
+        "y": 192
     },
     "enabled_tools": [
         "quick_notes",
         "clipboard_manager"
     ],
-    "last_widget_size": 32,
+    "last_widget_size": 69,
     "show_widget_resize_icon": true
 }

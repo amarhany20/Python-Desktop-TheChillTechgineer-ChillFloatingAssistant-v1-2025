@@ -54,8 +54,20 @@ class SettingsManager:
         return merged
 
     def get_setting(self, key, default=None):
-        """Returns the effective setting value for a given key."""
-        return self.settings.get(key, default)
+        """
+        Returns the setting value for a given key with the following priority:
+        1. User settings
+        2. Default settings
+        3. Provided default parameter
+        """
+        # First check if it's in user settings
+        if key in self.user_settings:
+            return self.user_settings[key]
+        # Then check default settings
+        elif key in self.default_settings:
+            return self.default_settings[key]
+        # Finally return the provided default
+        return default
 
     def update_setting(self, key, value):
         """
@@ -77,3 +89,7 @@ class SettingsManager:
         self.default_settings = self.load_json(self.default_settings_file)
         self.user_settings = self.load_json(self.user_settings_file)
         self.settings = self.merge_settings(self.default_settings, self.user_settings)
+
+    def get_app_config(self):
+        """Returns the app configuration."""
+        return self.app_config
